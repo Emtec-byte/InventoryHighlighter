@@ -21,7 +21,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @Slf4j
 @PluginDescriptor(
-    name = "Inventory Highlighter",
+    name = "Inventory Hover Highlighter",
     description = "Highlights specified items in your inventory",
     tags = {"inventory", "highlight", "items", "overlay", "tagging"}
 )

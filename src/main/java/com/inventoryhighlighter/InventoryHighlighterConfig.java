@@ -13,6 +13,7 @@ public interface InventoryHighlighterConfig extends Config
 {
     String GROUP = "inventoryhighlighter";
     String DEFAULT_ITEM_LIST = "Saradomin brew*, *moonlight antelope, Marlin, Manta ray, Anglerfish, Shark, *karambw*, Prayer potion*, Super restore*, *combat potion*, *Ranging potion*";
+    String DEFAULT_NOTEPAD_TEXT = "Use this as a quick copy/paste text storage area for item lists or notes. It does not affect highlighting.";
     String HELP_TEXT = "Enter item names in Items to Highlight, separated by commas. Plain names match exact items only, so Shark matches Shark but not Raw shark. Use * as a wildcard: Sha* matches names starting with Sha, *ar matches names ending in ar, and *ar* matches names containing ar.";
 
     @ConfigSection(
@@ -92,13 +93,13 @@ public interface InventoryHighlighterConfig extends Config
 
     @ConfigItem(
         keyName = "presets",
-        name = "List Scratchpad",
-        description = "Optional space for storing item lists or notes to copy into Items to Highlight. This field does not affect highlighting directly.",
+        name = "List Notepad",
+        description = "Optional text storage area for quick copy/paste of item lists or notes. This field does not affect highlighting directly.",
         position = 99
     )
     default String presets()
     {
-        return "";
+        return DEFAULT_NOTEPAD_TEXT;
     }
 
     @ConfigItem(
