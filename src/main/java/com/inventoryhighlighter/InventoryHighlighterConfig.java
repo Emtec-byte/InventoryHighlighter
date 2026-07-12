@@ -74,21 +74,33 @@ public interface InventoryHighlighterConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "outlineOnly",
-        name = "Outline Only",
-        description = "Only show outline instead of filled highlight",
+        keyName = "showInteract",
+        name = "Show interact",
+        description = "Recolor a highlighted item's outline while you interact with it (eat/drink/wear/use/fletch/etc.).",
         position = 5
     )
-    default boolean outlineOnly()
+    default boolean showInteract()
     {
         return false;
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "interactColor",
+        name = "Interact Color",
+        description = "The outline color shown while interacting with a highlighted item",
+        position = 6
+    )
+    default Color interactColor()
+    {
+        return new Color(0, 255, 0, 180);
     }
 
     @ConfigItem(
         keyName = "outlineThickness",
         name = "Outline Thickness",
         description = "The thickness of the outline in pixels (doesn't work with sprite outlines)",
-        position = 6
+        position = 7
     )
     default int outlineThickness()
     {
@@ -96,10 +108,21 @@ public interface InventoryHighlighterConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "outlineOnly",
+        name = "Outline Only",
+        description = "Only show outline instead of filled highlight",
+        position = 8
+    )
+    default boolean outlineOnly()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "spriteOnly",
         name = "Sprite Only",
         description = "Highlight only the item sprite instead of the full clickbox",
-        position = 7
+        position = 9
     )
     default boolean spriteOnly()
     {

@@ -4,8 +4,12 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
@@ -18,6 +22,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
@@ -43,6 +48,9 @@ public class InventoryHighlighterPlugin extends Plugin
     @Inject
     private InventoryHighlighterConfig config;
 
+    @Inject
+    private InteractionTracker interactionTracker;
+
     private String lastItemListValue = "";
 
     @Override
@@ -51,6 +59,7 @@ public class InventoryHighlighterPlugin extends Plugin
         log.debug("InventoryHighlighter started");
         lastItemListValue = config.itemList();
         hoverState.clear();
+        interactionTracker.clear();
         overlayManager.add(overlay);
     }
 
@@ -59,6 +68,7 @@ public class InventoryHighlighterPlugin extends Plugin
     {
         overlayManager.remove(overlay);
         hoverState.clear();
+        interactionTracker.clear();
         log.debug("InventoryHighlighter stopped");
     }
 
@@ -177,5 +187,51 @@ public class InventoryHighlighterPlugin extends Plugin
 
         hoverState.clear();
         overlay.clearCache();
+    }
+
+    @Subscribe
+    public void onMenuOptionClicked(MenuOptionClicked event)
+    {
+        if (!config.showInteract() || !hoverState.isSet())
+        {
+            return;
+        }
+
+        String option = event.getMenuOption();
+        if (option == null)
+        {
+            return;
+        }
+
+        option = Text.removeTags(option);
+        if ("Cancel".equalsIgnoreCase(option))
+        {
+            return;
+        }
+
+        int capGroup = "Eat".equalsIgnoreCase(option) ? InteractionTracker.CAP_EAT
+            : "Drink".equalsIgnoreCase(option) ? InteractionTracker.CAP_DRINK
+            : InteractionTracker.CAP_NONE;
+
+        int component = hoverState.getComponentId();
+        boolean inventory = component == InterfaceID.Inventory.ITEMS
+            || WidgetUtil.componentToInterface(component) == InterfaceID.INVENTORY;
+
+        interactionTracker.mark(component, hoverState.getSlotIndex(), hoverState.getItemId(), inventory, capGroup);
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        interactionTracker.reconcile();
+    }
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged event)
+    {
+        if (event.getGameState() != GameState.LOGGED_IN)
+        {
+            interactionTracker.clear();
+        }
     }
 }
