@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.gameval.InventoryID;
@@ -19,9 +20,14 @@ public class InteractionTracker
     public static final int CAP_EAT = 1;
     public static final int CAP_DRINK = 2;
 
+    // One game tick in client cycles, from the API tick lengths. The flash window is measured from the click cycle,
+    // so a still-present item shows for a consistent ~1 tick regardless of when in the tick it was clicked.
+    private static final int FLASH_CYCLES = Constants.GAME_TICK_LENGTH / Constants.CLIENT_TICK_LENGTH;
+
     enum Reconcile
     {
         REFRESH,
+        KEEP,
         CLEAR
     }
 
@@ -31,11 +37,13 @@ public class InteractionTracker
         private final int capGroup;
         private final boolean inventory;
         private int quantity;
+        private int clickCycle;
 
-        private Mark(int itemId, int quantity, int capGroup, boolean inventory)
+        private Mark(int itemId, int quantity, int clickCycle, int capGroup, boolean inventory)
         {
             this.itemId = itemId;
             this.quantity = quantity;
+            this.clickCycle = clickCycle;
             this.capGroup = capGroup;
             this.inventory = inventory;
         }
@@ -55,10 +63,19 @@ public class InteractionTracker
         return (((long) componentId) << 32) | (slotIndex & 0xffffffffL);
     }
 
-    // A changed quantity means an ongoing multi-tick action (keep highlighting); anything else clears at this reconcile.
-    static Reconcile decide(int markedId, int markedQty, int currentId, int currentQty)
+    // Gone/replaced clears now; a changed quantity is an ongoing action (refresh the window); an unchanged item holds
+    // until its window elapses.
+    static Reconcile decide(int markedId, int markedQty, int clickCycle, int currentId, int currentQty, int currentCycle)
     {
-        return currentId == markedId && currentQty != markedQty ? Reconcile.REFRESH : Reconcile.CLEAR;
+        if (currentId != markedId)
+        {
+            return Reconcile.CLEAR;
+        }
+        if (currentQty != markedQty)
+        {
+            return Reconcile.REFRESH;
+        }
+        return currentCycle - clickCycle >= FLASH_CYCLES ? Reconcile.CLEAR : Reconcile.KEEP;
     }
 
     // Eat/Drink keep only the latest mark per group: the game consumes the last-clicked, so highlight that one.
@@ -71,7 +88,7 @@ public class InteractionTracker
 
         Item item = inventory ? inventoryItem(slotIndex) : null;
         int quantity = item == null ? 0 : item.getQuantity();
-        marks.put(key(componentId, slotIndex), new Mark(itemId, quantity, capGroup, inventory));
+        marks.put(key(componentId, slotIndex), new Mark(itemId, quantity, client.getGameCycle(), capGroup, inventory));
     }
 
     void reconcile()
@@ -81,6 +98,7 @@ public class InteractionTracker
             return;
         }
 
+        int currentCycle = client.getGameCycle();
         Iterator<Map.Entry<Long, Mark>> it = marks.entrySet().iterator();
         while (it.hasNext())
         {
@@ -96,13 +114,17 @@ public class InteractionTracker
                 currentQty = item == null ? 0 : item.getQuantity();
             }
 
-            if (decide(m.itemId, m.quantity, currentId, currentQty) == Reconcile.CLEAR)
+            switch (decide(m.itemId, m.quantity, m.clickCycle, currentId, currentQty, currentCycle))
             {
-                it.remove();
-            }
-            else
-            {
-                m.quantity = currentQty;
+                case CLEAR:
+                    it.remove();
+                    break;
+                case REFRESH:
+                    m.quantity = currentQty;
+                    m.clickCycle = currentCycle;
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -122,7 +144,7 @@ public class InteractionTracker
         }
 
         Mark m = marks.get(key(widget.getId(), widget.getIndex()));
-        return m != null && m.itemId == widgetItem.getId();
+        return m != null && m.itemId == widgetItem.getId() && client.getGameCycle() - m.clickCycle < FLASH_CYCLES;
     }
 
     void clear()

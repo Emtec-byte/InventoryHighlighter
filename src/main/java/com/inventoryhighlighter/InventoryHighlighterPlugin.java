@@ -192,7 +192,7 @@ public class InventoryHighlighterPlugin extends Plugin
     @Subscribe
     public void onMenuOptionClicked(MenuOptionClicked event)
     {
-        if (!config.showInteract() || !hoverState.isSet())
+        if (!config.showInteract())
         {
             return;
         }
@@ -209,15 +209,42 @@ public class InventoryHighlighterPlugin extends Plugin
             return;
         }
 
+        // Identity comes from the clicked event widget, not the live hover, which can advance to another item before
+        // this fires. Fall back to the hover for actions whose event widget isn't the item (e.g. use-on).
+        int component;
+        int slotIndex;
+        int itemId;
+        Widget widget = event.getWidget();
+        if (isSupportedItemWidget(widget) && overlay.shouldHighlightItem(widget.getItemId()))
+        {
+            component = widget.getId();
+            slotIndex = widget.getIndex() == -1 ? event.getParam0() : widget.getIndex();
+            itemId = widget.getItemId();
+        }
+        else if (hoverState.isSet())
+        {
+            component = hoverState.getComponentId();
+            slotIndex = hoverState.getSlotIndex();
+            itemId = hoverState.getItemId();
+        }
+        else
+        {
+            return;
+        }
+
+        if (slotIndex == -1)
+        {
+            return;
+        }
+
         int capGroup = "Eat".equalsIgnoreCase(option) ? InteractionTracker.CAP_EAT
             : "Drink".equalsIgnoreCase(option) ? InteractionTracker.CAP_DRINK
             : InteractionTracker.CAP_NONE;
 
-        int component = hoverState.getComponentId();
         boolean inventory = component == InterfaceID.Inventory.ITEMS
             || WidgetUtil.componentToInterface(component) == InterfaceID.INVENTORY;
 
-        interactionTracker.mark(component, hoverState.getSlotIndex(), hoverState.getItemId(), inventory, capGroup);
+        interactionTracker.mark(component, slotIndex, itemId, inventory, capGroup);
     }
 
     @Subscribe
