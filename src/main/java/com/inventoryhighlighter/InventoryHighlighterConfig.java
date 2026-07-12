@@ -14,7 +14,7 @@ public interface InventoryHighlighterConfig extends Config
     String GROUP = "inventoryhighlighter";
     String DEFAULT_ITEM_LIST = "Saradomin brew*, *moonlight antelope, Marlin, Manta ray, Anglerfish, Shark, *karambw*, Prayer potion*, Super restore*, *combat potion*, *Ranging potion*";
     String DEFAULT_NOTEPAD_TEXT = "Use this as a quick copy/paste text storage area for item lists or notes. It does not affect highlighting.";
-    String HELP_TEXT = "Enter item names in Items to Highlight, separated by commas. Plain names match exact items only, so Shark matches Shark but not Raw shark. Use * as a wildcard: Sha* matches names starting with Sha, *ar matches names ending in ar, and *ar* matches names containing ar.";
+    String HELP_TEXT = "Enter item names in Item List, separated by commas. Highlight mode decides whether the list is a whitelist (highlight only these items) or a blacklist (highlight everything except these items). Plain names match exact items only, so Shark matches Shark but not Raw shark. Use * as a wildcard: Sha* matches names starting with Sha, *ar matches names ending in ar, and *ar* matches names containing ar.";
 
     @ConfigSection(
         name = "How to use",
@@ -24,16 +24,29 @@ public interface InventoryHighlighterConfig extends Config
     )
     String helpSection = "help";
 
+    // The item list is shared by both modes; Highlight mode decides whether it acts as a whitelist or a blacklist.
     // Highlighting is intentionally hover-only; drawing every matching item was only useful during performance tuning.
 
     @ConfigItem(
         keyName = "itemList",
-        name = "Items to Highlight",
-        description = "List of items to highlight (comma-separated)"
+        name = "Item List",
+        description = "Comma-separated item names. Shared by both modes: highlighted in Whitelist mode, ignored in Blacklist mode.",
+        position = 1
     )
     default String itemList()
     {
         return DEFAULT_ITEM_LIST;
+    }
+
+    @ConfigItem(
+        keyName = "highlightMode",
+        name = "Highlight mode",
+        description = "Whitelist highlights only the items in the list. Blacklist highlights every item except those in the list (an empty list highlights everything).",
+        position = 2
+    )
+    default HighlightMode highlightMode()
+    {
+        return HighlightMode.WHITELIST;
     }
 
     @Alpha
@@ -41,7 +54,7 @@ public interface InventoryHighlighterConfig extends Config
         keyName = "outlineColor",
         name = "Outline Color",
         description = "The color of the outline",
-        position = 1
+        position = 3
     )
     default Color outlineColor()
     {
@@ -53,7 +66,7 @@ public interface InventoryHighlighterConfig extends Config
         keyName = "fillColor",
         name = "Fill Color",
         description = "The color of the fill",
-        position = 2
+        position = 4
     )
     default Color fillColor()
     {
@@ -63,7 +76,8 @@ public interface InventoryHighlighterConfig extends Config
     @ConfigItem(
         keyName = "outlineOnly",
         name = "Outline Only",
-        description = "Only show outline instead of filled highlight"
+        description = "Only show outline instead of filled highlight",
+        position = 5
     )
     default boolean outlineOnly()
     {
@@ -74,7 +88,7 @@ public interface InventoryHighlighterConfig extends Config
         keyName = "outlineThickness",
         name = "Outline Thickness",
         description = "The thickness of the outline in pixels (doesn't work with sprite outlines)",
-        position = 4
+        position = 6
     )
     default int outlineThickness()
     {
@@ -84,7 +98,8 @@ public interface InventoryHighlighterConfig extends Config
     @ConfigItem(
         keyName = "spriteOnly",
         name = "Sprite Only",
-        description = "Highlight only the item sprite instead of the full clickbox"
+        description = "Highlight only the item sprite instead of the full clickbox",
+        position = 7
     )
     default boolean spriteOnly()
     {
@@ -112,5 +127,19 @@ public interface InventoryHighlighterConfig extends Config
     default String helpText()
     {
         return HELP_TEXT;
+    }
+
+    // Shared by both modes; the mode decides whether a list match means "highlight" (whitelist) or "suppress" (blacklist).
+    enum HighlightMode
+    {
+        WHITELIST,
+        BLACKLIST;
+
+        @Override
+        public String toString()
+        {
+            // Render as "Whitelist" / "Blacklist" in the config dropdown instead of the all-caps enum name.
+            return name().charAt(0) + name().substring(1).toLowerCase();
+        }
     }
 }

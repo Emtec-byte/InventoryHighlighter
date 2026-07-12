@@ -128,6 +128,17 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
 
     public boolean shouldHighlightItem(int itemId)
     {
+        boolean listed = isListed(itemId);
+        // Blacklist inverts the raw match; an empty list means nothing is listed, so everything highlights.
+        return config.highlightMode() == InventoryHighlighterConfig.HighlightMode.BLACKLIST
+            ? !listed
+            : listed;
+    }
+
+    // Raw, mode-agnostic match: does this item's name match one of the configured patterns?
+    // The cache is keyed on this result, so toggling whitelist/blacklist never invalidates it.
+    private boolean isListed(int itemId)
+    {
         if (itemPatterns.isEmpty())
         {
             return false;
@@ -309,7 +320,9 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
 
     public void clearCache()
     {
-        lastConfigList = "";
+        // null can never equal the (never-null) standardized config, so updateHighlightPatterns always rebuilds -
+        // including when the list is cleared to empty. Using "" here would collide with an empty list and skip the rebuild.
+        lastConfigList = null;
         fillCache.invalidateAll();
         updateHighlightPatterns(config.itemList());
     }
