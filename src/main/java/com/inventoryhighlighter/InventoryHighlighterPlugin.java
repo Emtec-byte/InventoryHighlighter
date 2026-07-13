@@ -241,16 +241,13 @@ public class InventoryHighlighterPlugin extends Plugin
             : "Drink".equalsIgnoreCase(option) ? InteractionTracker.CAP_DRINK
             : InteractionTracker.CAP_NONE;
 
-        boolean inventory = component == InterfaceID.Inventory.ITEMS
-            || WidgetUtil.componentToInterface(component) == InterfaceID.INVENTORY;
-
-        interactionTracker.mark(component, slotIndex, itemId, inventory, capGroup);
+        interactionTracker.mark(component, slotIndex, itemId, capGroup);
     }
 
     @Subscribe
     public void onGameTick(GameTick event)
     {
-        interactionTracker.reconcile();
+        interactionTracker.expireStale();
     }
 
     @Subscribe
