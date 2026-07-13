@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetItem;
 
@@ -19,23 +20,27 @@ public class InteractionTracker
     {
         private final int itemId;
         private final int markTick;
+        private final int markCycle;
         private final int capGroup;
 
-        private Mark(int itemId, int markTick, int capGroup)
+        private Mark(int itemId, int markTick, int markCycle, int capGroup)
         {
             this.itemId = itemId;
             this.markTick = markTick;
+            this.markCycle = markCycle;
             this.capGroup = capGroup;
         }
     }
 
     private final Client client;
+    private final InventoryHighlighterConfig config;
     private final Map<Long, Mark> marks = new HashMap<>();
 
     @Inject
-    private InteractionTracker(Client client)
+    private InteractionTracker(Client client, InventoryHighlighterConfig config)
     {
         this.client = client;
+        this.config = config;
     }
 
     private static long key(int componentId, int slotIndex)
@@ -43,8 +48,13 @@ public class InteractionTracker
         return (((long) componentId) << 32) | (slotIndex & 0xffffffffL);
     }
 
-    // Record a click against the tick it happened on. Eat/Drink keep only the latest mark per group: the game consumes
-    // the last-clicked, so that is the one to highlight.
+    // Min display time in client ticks (~20ms each).
+    private int rolloverCycles()
+    {
+        return Math.round(config.interactRolloverMs() / (float) Constants.CLIENT_TICK_LENGTH);
+    }
+
+    // Eat/Drink keep only the latest mark per group; the game consumes the last-clicked.
     void mark(int componentId, int slotIndex, int itemId, int capGroup)
     {
         if (capGroup != CAP_NONE)
@@ -52,12 +62,11 @@ public class InteractionTracker
             marks.values().removeIf(m -> m.capGroup == capGroup);
         }
 
-        marks.put(key(componentId, slotIndex), new Mark(itemId, client.getTickCount(), capGroup));
+        marks.put(key(componentId, slotIndex), new Mark(itemId, client.getTickCount(), client.getGameCycle(), capGroup));
     }
 
-    // Active only during the tick the item was clicked: the mark's tick must equal the current tick, so the outline can
-    // never roll into a later tick. The itemId match stops a client-side swap (e.g. Instant Inventory) inheriting the
-    // outline of the item it replaced.
+    // Lit during the click tick, then into the next tick until the min display time elapses. The itemId match stops a
+    // client-side swap (e.g. Instant Inventory) inheriting the outline it replaced.
     boolean isActive(WidgetItem widgetItem)
     {
         if (widgetItem == null || marks.isEmpty())
@@ -72,11 +81,24 @@ public class InteractionTracker
         }
 
         Mark m = marks.get(key(widget.getId(), widget.getIndex()));
-        return m != null && m.itemId == widgetItem.getId() && m.markTick == client.getTickCount();
+        if (m == null || m.itemId != widgetItem.getId())
+        {
+            return false;
+        }
+
+        int currentTick = client.getTickCount();
+        if (m.markTick == currentTick)
+        {
+            return true;
+        }
+
+        int rollover = rolloverCycles();
+        return rollover > 0
+            && currentTick == m.markTick + 1
+            && client.getGameCycle() - m.markCycle < rollover;
     }
 
-    // Drop marks from earlier ticks. Visibility is already gated by isActive's tick check, so this only keeps the map
-    // from growing; removing by tick (not a blanket clear) cannot wipe a mark placed earlier in the current tick.
+    // Drop marks past their window (one extra tick when a min display time is set).
     void expireStale()
     {
         if (marks.isEmpty())
@@ -85,7 +107,8 @@ public class InteractionTracker
         }
 
         int currentTick = client.getTickCount();
-        marks.values().removeIf(m -> m.markTick != currentTick);
+        int maxAge = rolloverCycles() > 0 ? 1 : 0;
+        marks.values().removeIf(m -> currentTick - m.markTick > maxAge);
     }
 
     void clear()

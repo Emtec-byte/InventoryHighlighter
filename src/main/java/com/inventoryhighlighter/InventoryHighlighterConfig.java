@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.config.Alpha;
 import java.awt.Color;
 
@@ -96,11 +97,26 @@ public interface InventoryHighlighterConfig extends Config
         return new Color(0, 255, 0, 180);
     }
 
+    @Range(
+        min = 0,
+        max = 600
+    )
+    @ConfigItem(
+        keyName = "interactRolloverMs",
+        name = "Interact min. display (ms)",
+        description = "Minimum time (ms) the interact outline stays lit. 0 = only the tick you clicked.",
+        position = 7
+    )
+    default int interactRolloverMs()
+    {
+        return 0;
+    }
+
     @ConfigItem(
         keyName = "outlineThickness",
         name = "Outline Thickness",
         description = "The thickness of the outline in pixels (doesn't work with sprite outlines)",
-        position = 7
+        position = 8
     )
     default int outlineThickness()
     {
@@ -111,7 +127,7 @@ public interface InventoryHighlighterConfig extends Config
         keyName = "outlineOnly",
         name = "Outline Only",
         description = "Only show outline instead of filled highlight",
-        position = 8
+        position = 9
     )
     default boolean outlineOnly()
     {
@@ -122,7 +138,7 @@ public interface InventoryHighlighterConfig extends Config
         keyName = "spriteOnly",
         name = "Sprite Only",
         description = "Highlight only the item sprite instead of the full clickbox",
-        position = 9
+        position = 10
     )
     default boolean spriteOnly()
     {
