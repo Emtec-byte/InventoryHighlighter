@@ -34,6 +34,7 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
     private final InventoryHighlighterConfig config;
     private final ItemManager itemManager;
     private final HoverState hoverState;
+    private final InteractionTracker interactionTracker;
     private final Cache<FillKey, Image> fillCache;
 
     private final Map<String, Boolean> itemPatterns = new HashMap<>();
@@ -87,12 +88,13 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
 
     @Inject
     private InventoryHighlighterOverlay(Client client, InventoryHighlighterConfig config,
-        ItemManager itemManager, HoverState hoverState)
+        ItemManager itemManager, HoverState hoverState, InteractionTracker interactionTracker)
     {
         this.client = client;
         this.config = config;
         this.itemManager = itemManager;
         this.hoverState = hoverState;
+        this.interactionTracker = interactionTracker;
         this.fillCache = CacheBuilder.newBuilder()
             .concurrencyLevel(1)
             .maximumSize(64)
@@ -113,17 +115,23 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
             return;
         }
 
-        if (!hoverState.isItemHovered(widgetItem))
+        boolean clickActive = config.showInteract() && interactionTracker.isActive(widgetItem);
+        boolean hovered = hoverState.isItemHovered(widgetItem);
+
+        if (!clickActive && !hovered)
         {
             return;
         }
 
-        if (!shouldHighlightItem(itemId))
+        if (!clickActive && !shouldHighlightItem(itemId))
         {
             return;
         }
 
-        drawHighlight(graphics, itemId, widgetItem);
+        Color outlineColor = clickActive ? config.interactColor() : config.outlineColor();
+        Color fillColor = clickActive ? config.interactColor() : config.fillColor();
+        boolean outlineOnly = clickActive || config.outlineOnly();
+        drawHighlight(graphics, itemId, widgetItem, outlineColor, fillColor, outlineOnly);
     }
 
     public boolean shouldHighlightItem(int itemId)
@@ -248,7 +256,7 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
         return regex.toString();
     }
 
-    private void drawHighlight(Graphics2D graphics, int itemId, WidgetItem widgetItem)
+    private void drawHighlight(Graphics2D graphics, int itemId, WidgetItem widgetItem, Color outlineColor, Color fillColor, boolean outlineOnly)
     {
         // Sprite mode mirrors Inventory Tags: use ItemManager outlines and ImageUtil fills instead of custom canvas tracing.
         Rectangle bounds = widgetItem.getCanvasBounds();
@@ -262,12 +270,9 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
 
         try
         {
-            Color outlineColor = config.outlineColor();
-            Color fillColor = config.fillColor();
-
             if (config.spriteOnly())
             {
-                if (!config.outlineOnly())
+                if (!outlineOnly)
                 {
                     Image filledImage = getFillImage(itemId, widgetItem.getQuantity(), fillColor);
                     graphics.drawImage(filledImage, (int) bounds.getX(), (int) bounds.getY(), null);
@@ -281,7 +286,7 @@ public class InventoryHighlighterOverlay extends WidgetItemOverlay
                 return;
             }
 
-            if (!config.outlineOnly())
+            if (!outlineOnly)
             {
                 graphics.setColor(new Color(
                     fillColor.getRed(),

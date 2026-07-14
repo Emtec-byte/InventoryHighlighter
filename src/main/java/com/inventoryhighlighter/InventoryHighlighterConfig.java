@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.config.Alpha;
 import java.awt.Color;
 
@@ -74,21 +75,48 @@ public interface InventoryHighlighterConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "outlineOnly",
-        name = "Outline Only",
-        description = "Only show outline instead of filled highlight",
+        keyName = "showInteract",
+        name = "Show interact",
+        description = "Recolor a highlighted item's outline while you interact with it (eat/drink/wear/use/fletch/etc.).",
         position = 5
     )
-    default boolean outlineOnly()
+    default boolean showInteract()
     {
         return false;
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "interactColor",
+        name = "Interact Color",
+        description = "The outline color shown while interacting with a highlighted item",
+        position = 6
+    )
+    default Color interactColor()
+    {
+        return new Color(0, 255, 0, 180);
+    }
+
+    @Range(
+        min = 0,
+        max = 600
+    )
+    @ConfigItem(
+        keyName = "interactRolloverMs",
+        name = "Interact min. display (ms)",
+        description = "Minimum time (ms) the interact outline stays lit. 0 = only the tick you clicked.",
+        position = 7
+    )
+    default int interactRolloverMs()
+    {
+        return 0;
     }
 
     @ConfigItem(
         keyName = "outlineThickness",
         name = "Outline Thickness",
         description = "The thickness of the outline in pixels (doesn't work with sprite outlines)",
-        position = 6
+        position = 8
     )
     default int outlineThickness()
     {
@@ -96,10 +124,21 @@ public interface InventoryHighlighterConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "outlineOnly",
+        name = "Outline Only",
+        description = "Only show outline instead of filled highlight",
+        position = 9
+    )
+    default boolean outlineOnly()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "spriteOnly",
         name = "Sprite Only",
         description = "Highlight only the item sprite instead of the full clickbox",
-        position = 7
+        position = 10
     )
     default boolean spriteOnly()
     {

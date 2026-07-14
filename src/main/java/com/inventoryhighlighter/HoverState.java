@@ -33,6 +33,26 @@ public class HoverState
             && item.getId() == itemId;
     }
 
+    public boolean isSet()
+    {
+        return componentId != -1 && slotIndex != -1 && itemId != -1;
+    }
+
+    public int getComponentId()
+    {
+        return componentId;
+    }
+
+    public int getSlotIndex()
+    {
+        return slotIndex;
+    }
+
+    public int getItemId()
+    {
+        return itemId;
+    }
+
     public void clear()
     {
         componentId = -1;
